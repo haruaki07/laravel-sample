@@ -2,12 +2,7 @@ FROM docker.io/amazonlinux:2
 
 ARG USER=nobody
 
-ENV APP_NAME=lkskabweb
-ENV APP_ENV=production
-ENV APP_DEBUG=false
-ENV APP_KEY
-
-# install php and httpd
+# install deps
 RUN yum update -y \
   && amazon-linux-extras install php8.1 -y \
   && yum install -y \
@@ -16,7 +11,11 @@ RUN yum update -y \
     php-mbstring \
     php-bcmath \
     php-xml \
-    httpd
+    php-gd \
+    httpd \
+    unzip \
+    python2-pip \
+  && pip install supervisor --progress-bar off
 
 # setup app dir
 RUN usermod -aG apache $USER \
@@ -41,13 +40,16 @@ USER $USER:apache
 
 RUN composer install --no-interaction --ansi \
   && chown -R $USER:apache /var/www/app \
-  && chmod -R 2775 /var/www/app/storage /var/www/app/bootstrap/cache \
-  && php artisan optimize --no-interaction --ansi \
-  && php artisan migrate --force --no-interaction --ansi
+  && chmod -R 2775 /var/www/app/storage /var/www/app/bootstrap/cache
 
-COPY --chown=root:root ./docker/supervisord.conf /etc/supervisord.conf
+USER root:root
+
+COPY ./docker/supervisord.conf /etc/supervisord.conf
+COPY ./docker/run.sh .
+
+RUN chmod +x ./run.sh
 
 EXPOSE 80
 
 # run supervisor
-CMD ["/usr/bin/supervisord", "-n", "-c", "/etc/supervisord.conf"]
+CMD ["./run.sh"]

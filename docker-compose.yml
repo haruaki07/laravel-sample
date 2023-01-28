@@ -1,0 +1,80 @@
+version: "3"
+
+services:
+    db:
+        image: mysql:5.7
+        restart: on-failure
+        networks:
+            - app
+        environment:
+            MYSQL_DATABASE: laravel
+            MYSQL_ROOT_PASSWORD: root
+        healthcheck:
+            test: ["CMD", "mysqladmin", "-uroot", "-proot", "ping"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        volumes:
+            - ./.docker/db-data:/var/lib/mysql
+
+    s3:
+        image: minio/minio:latest
+        entrypoint: >
+            /bin/sh -c "
+            mkdir -p /data/assets;
+            /opt/bin/minio server /data --console-address ":9090";
+            "
+        environment:
+            MINIO_ROOT_USER: access_key
+            MINIO_ROOT_PASSWORD: secret_key
+        healthcheck:
+            test:
+                ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        networks:
+            - app
+        ports:
+            - 9000:9000
+            - 9001:9001
+            - 9090:9090
+        restart: on-failure
+        volumes:
+            - ./.docker/s3-data:/data
+
+    app:
+        build: .
+        depends_on:
+            db:
+                condition: service_healthy
+            s3:
+                condition: service_healthy
+        networks:
+            - app
+        restart: on-failure
+        ports:
+            - 80:80
+        environment:
+            APP_NAME: Laravel
+            APP_KEY: base64:mDnGPUENr4pPuy0swtrU0dSWAbHquLAMjQP0SzOiVns= # openssl rand -base64 32
+            APP_URL: http://localhost
+            DB_CONNECTION: mysql
+            DB_HOST: db
+            DB_PORT: 3306
+            DB_DATABASE: laravel
+            DB_USERNAME: root
+            DB_PASSWORD: root
+            CACHE_DRIVER: database
+            FILESYSTEM_DISK: s3
+            SESSION_DRIVER: cookie
+            MEDIA_DISK: s3 # spatie/laravel-medialibrary
+            AWS_ENDPOINT: http://s3:9000
+            AWS_ACCESS_KEY_ID: minio
+            AWS_DEFAULT_REGION: us-east-1
+            AWS_SECRET_ACCESS_KEY: minio
+            AWS_BUCKET: assets
+            AWS_USE_PATH_STYLE_ENDPOINT: true
+
+networks:
+    app:
