@@ -37,7 +37,6 @@ services:
             - app
         ports:
             - 9000:9000
-            - 9001:9001
             - 9090:9090
         restart: on-failure
         volumes:
@@ -54,7 +53,7 @@ services:
             - app
         restart: on-failure
         ports:
-            - 80:80
+            - 8000:80
         environment:
             APP_NAME: Laravel
             APP_KEY: base64:mDnGPUENr4pPuy0swtrU0dSWAbHquLAMjQP0SzOiVns= # openssl rand -base64 32
@@ -70,9 +69,9 @@ services:
             SESSION_DRIVER: cookie
             MEDIA_DISK: s3 # spatie/laravel-medialibrary
             AWS_ENDPOINT: http://s3:9000
-            AWS_ACCESS_KEY_ID: minio
+            AWS_ACCESS_KEY_ID: access_key
+            AWS_SECRET_ACCESS_KEY: secret_key
             AWS_DEFAULT_REGION: us-east-1
-            AWS_SECRET_ACCESS_KEY: minio
             AWS_BUCKET: assets
             AWS_USE_PATH_STYLE_ENDPOINT: true
 

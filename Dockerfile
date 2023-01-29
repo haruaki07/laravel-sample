@@ -1,6 +1,27 @@
+FROM node:16-alpine AS builder
+
+ENV NODE_ENV=production
+
+WORKDIR /usr/app
+
+COPY package*.json \
+  postcss.config.js \
+  tailwind.config.js \
+  vite.config.js \
+  .
+
+COPY resources ./resources
+
+RUN npm ci --include=dev
+
+RUN npm run build
+
 FROM docker.io/amazonlinux:2
 
 ARG USER=nobody
+
+ENV APP_DEBUG=false
+ENV APP_ENV=production
 
 # install deps
 RUN yum update -y \
@@ -41,6 +62,8 @@ USER $USER:apache
 RUN composer install --no-interaction --ansi \
   && chown -R $USER:apache /var/www/app \
   && chmod -R 2775 /var/www/app/storage /var/www/app/bootstrap/cache
+
+COPY --from=builder /usr/app/public/build ./public/build
 
 USER root:root
 
